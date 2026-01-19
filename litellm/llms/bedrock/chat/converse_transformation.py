@@ -1363,23 +1363,20 @@ class AmazonConverseConfig(BaseConfig):
         str,
         List[ChatCompletionToolCallChunk],
         Optional[List[BedrockConverseReasoningContentBlock]],
-        Optional[List[CitationsContentBlock]],
     ]:
         """
-        Translate the message content to a string and a list of tool calls, reasoning content blocks, and citations.
+        Translate the message content to a string and a list of tool calls and reasoning content blocks
 
         Returns:
             content_str: str
             tools: List[ChatCompletionToolCallChunk]
             reasoningContentBlocks: Optional[List[BedrockConverseReasoningContentBlock]]
-            citationsContentBlocks: Optional[List[CitationsContentBlock]] - Citations from Nova grounding
         """
         content_str = ""
         tools: List[ChatCompletionToolCallChunk] = []
         reasoningContentBlocks: Optional[List[BedrockConverseReasoningContentBlock]] = (
             None
         )
-        citationsContentBlocks: Optional[List[CitationsContentBlock]] = None
         for idx, content in enumerate(content_blocks):
             """
             - Content is either a tool response or text
@@ -1424,13 +1421,8 @@ class AmazonConverseConfig(BaseConfig):
                 if reasoningContentBlocks is None:
                     reasoningContentBlocks = []
                 reasoningContentBlocks.append(content["reasoningContent"])
-            # Handle Nova grounding citations content
-            if "citationsContent" in content:
-                if citationsContentBlocks is None:
-                    citationsContentBlocks = []
-                citationsContentBlocks.append(content["citationsContent"])
 
-        return content_str, tools, reasoningContentBlocks, citationsContentBlocks
+        return content_str, tools, reasoningContentBlocks
 
     def _transform_response(
         self,
@@ -1508,27 +1500,18 @@ class AmazonConverseConfig(BaseConfig):
         reasoningContentBlocks: Optional[List[BedrockConverseReasoningContentBlock]] = (
             None
         )
-        citationsContentBlocks: Optional[List[CitationsContentBlock]] = None
 
         if message is not None:
             (
                 content_str,
                 tools,
                 reasoningContentBlocks,
-                citationsContentBlocks,
             ) = self._translate_message_content(message["content"])
 
-        # Initialize provider_specific_fields if we have any special content blocks
-        provider_specific_fields: dict = {}
         if reasoningContentBlocks is not None:
-            provider_specific_fields["reasoningContentBlocks"] = reasoningContentBlocks
-        if citationsContentBlocks is not None:
-            provider_specific_fields["citationsContent"] = citationsContentBlocks
-
-        if provider_specific_fields:
-            chat_completion_message["provider_specific_fields"] = provider_specific_fields
-
-        if reasoningContentBlocks is not None:
+            chat_completion_message["provider_specific_fields"] = {
+                "reasoningContentBlocks": reasoningContentBlocks,
+            }
             chat_completion_message["reasoning_content"] = (
                 self._transform_reasoning_content(reasoningContentBlocks)
             )
